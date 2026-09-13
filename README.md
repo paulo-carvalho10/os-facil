@@ -13,20 +13,23 @@ Aplicativo de ordens de serviço para assistências técnicas, desenvolvido como
 3. Abra uma OS para ver os dados do aparelho e atualizar a etapa.
 4. Cadastre uma nova OS, adicione uma foto de teste e explore a impressão.
 5. Use **Abrir** no cartão Portal do cliente para visualizar o acompanhamento.
-6. Clique em **Recarregar demonstração** para restaurar os exemplos. Isso apaga as alterações locais da demonstração.
+6. **Desligue a internet e recarregue a página.** O painel abre, e dá para abrir OS, avançar etapas e colher assinatura sem rede.
+7. Clique em **Recarregar demonstração** para restaurar os exemplos. Isso apaga as alterações locais da demonstração.
 
-A demonstração usa IndexedDB no seu navegador. Não envia dados ao Supabase, não exige login e não compartilha alterações entre visitantes. Use apenas dados fictícios. Os links de acompanhamento dessa versão dependem dos dados do mesmo navegador.
+A demonstração usa IndexedDB no seu navegador e pode ser instalada como aplicativo. Depois da primeira visita, funciona sem internet. Não envia dados ao Supabase, não exige login e não compartilha alterações entre visitantes. Use apenas dados fictícios. Os links de acompanhamento dessa versão dependem dos dados do mesmo navegador.
 
 ## Funcionalidades
 
-- Cadastro de cliente, aparelho, defeito, acessórios e orçamento.
+- Funciona offline e pode ser instalada como aplicativo (PWA).
+- Cadastro de cliente, aparelho, defeito, acessórios e orçamento, validado no aparelho com os mesmos limites do banco.
 - Busca, filtros e resumo de atendimentos.
 - Seis etapas de reparo e histórico de alterações.
 - Fotos pela galeria ou câmera, reduzidas antes de salvar.
-- Assinatura em canvas e estilos de impressão A4/80 mm.
+- Assinatura em canvas, guardada como registro próprio para não ser apagada por mudanças de status em outro aparelho.
+- Estilos de impressão A4 e 80 mm.
 - Portal por código aleatório, sem exibir dados pessoais, fotos ou notas internas.
 - Leitura de códigos quando o navegador oferece BarcodeDetector.
-- Persistência local das alterações.
+- Fila de sincronização em que uma alteração recusada pelo servidor não trava as outras e aparece na tela com o motivo.
 
 ## Integração com Supabase
 
@@ -69,9 +72,11 @@ O workflow publica a pasta `dist` no GitHub Pages após os testes. Rotas da demo
 
 ## Validação e limites
 
-13 testes automatizados locais aprovados, além de verificações SQL de RLS, autorização, idempotência e privacidade. O fluxo conectado foi testado com login humano, criação de OS, upload privado e sincronização entre Codex e Opera.
+32 testes automatizados. Cobrem validação, regras da fila, o motor de sincronização contra um servidor em memória (recusa que não trava a fila, queda de conexão, assinatura preservada em conflito) e a migração do banco local. O script `supabase/testar-integracao.sql` cobre RLS, autorização, escrita direta bloqueada, idempotência, privacidade do portal e preservação da assinatura. As cinco migrações e esse script foram executados num PostgreSQL local.
 
-Este é um MVP de portfólio, não um produto pronto para operação comercial. Ainda não foram validados impressão física, instalação PWA e reabertura completamente offline. A demonstração no Pages não registra service worker. Recuperação de senha na interface, backup operacional e testes de conflitos simultâneos permanecem pendentes. Câmera e leitura de códigos dependem do navegador e de permissão do visitante.
+A demonstração foi verificada num Chromium: instalável, abre e recarrega sem rede, cria OS, salva assinatura e abre o portal offline. O fluxo conectado foi testado antes, num projeto Supabase real, com login, criação de OS, envio de foto e sincronização entre dois navegadores.
+
+Este é um MVP de portfólio, não um produto pronto para operação comercial. Pendentes: impressão física, recuperação de senha na interface, backup operacional e download incremental (hoje cada ciclo baixa as tabelas inteiras). Na versão conectada, abrir o painel exige validar a sessão online; depois de aberto, funciona sem rede. Câmera e leitura de códigos dependem do navegador e de permissão do visitante. Detalhes em [ARQUITETURA.md](ARQUITETURA.md).
 
 Estoque, nota fiscal, pagamentos e multiempresa estão fora do escopo atual: [V2.md](V2.md).
 
