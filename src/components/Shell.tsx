@@ -35,7 +35,7 @@ export function Shell() {
         <div className="sync-card">
           <div className="sync-title">
             {estado === 'offline' ? <WifiOff size={17} /> : <span className={`sync-dot ${estado}`} />}
-            <strong>{rotulos[estado]}</strong>
+            <strong>{estado === 'sincronizado' && pendentes > 0 ? 'Alterações aguardando envio' : rotulos[estado]}</strong>
           </div>
           <p>{pendentes} {pendentes === 1 ? 'alteração pendente' : 'alterações pendentes'}</p>
           <button className="text-button" onClick={() => void sincronizarAgora()}>
