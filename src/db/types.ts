@@ -79,7 +79,13 @@ export interface OperacaoSync {
   criadaEm: string
   tentativas: number
   proximaTentativaEm: string
-  estado: 'pendente' | 'processando' | 'erro'
+  /**
+   * pendente: ainda não enviada.
+   * erro: falhou por conexão e será tentada de novo em proximaTentativaEm.
+   * recusada: o servidor recusou os dados; nova tentativa não resolve, alguém precisa decidir.
+   * processando: usado por versões anteriores; tratado como pendente.
+   */
+  estado: 'pendente' | 'processando' | 'erro' | 'recusada'
   erro?: string
 }
 

@@ -1,6 +1,6 @@
-import { ClipboardList, Plus, RefreshCcw, WifiOff } from 'lucide-react'
+import { AlertTriangle, ClipboardList, Plus, RefreshCcw, WifiOff } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import { NavLink, Outlet } from 'react-router-dom'
+import { Link, NavLink, Outlet } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../db/database'
 import { observarSync, sincronizarAgora } from '../sync/supabase-engine'
@@ -16,9 +16,17 @@ const rotulos = {
 
 export function Shell() {
   const [estado, setEstado] = useState<keyof typeof rotulos>('local')
-  const pendentes = useLiveQuery(() => db.filaSync.count(), [], 0)
+  const pendentes = useLiveQuery(() => db.filaSync.filter((operacao) => operacao.estado !== 'recusada').count(), [], 0)
+  const recusadas = useLiveQuery(() => db.filaSync.where('estado').equals('recusada').count(), [], 0)
 
   useEffect(() => observarSync(setEstado), [])
+
+  const avisoRecusadas = supabase && recusadas > 0 && (
+    <Link to="/sincronizacao" className="sync-alert no-print">
+      <AlertTriangle size={16} />
+      {recusadas} {recusadas === 1 ? 'alteração recusada pelo servidor' : 'alterações recusadas pelo servidor'}
+    </Link>
+  )
 
   return (
     <div className="app-shell">
@@ -42,10 +50,20 @@ export function Shell() {
           {supabase && <button className="text-button" onClick={() => void sincronizarAgora()}>
             <RefreshCcw size={14} /> Tentar agora
           </button>}
+          {avisoRecusadas}
         </div>
         <p className="version">OS Fácil v0.1.0</p>
       </aside>
-      <main className="main-content">{supabase && <div className="no-print" style={{ padding: '12px 24px', textAlign: 'right' }}><button className="text-button" onClick={() => void supabase!.auth.signOut({ scope: 'local' }).then(() => window.location.reload())}>Sair da conta</button></div>}<Outlet /></main>
+      <main className="main-content">
+        {supabase && (
+          <div className="no-print" style={{ padding: '12px 24px', textAlign: 'right' }}>
+            <button className="text-button" onClick={() => void supabase!.auth.signOut({ scope: 'local' }).then(() => window.location.reload())}>Sair da conta</button>
+          </div>
+        )}
+        {/* No celular a barra lateral some; o aviso precisa aparecer no conteúdo. */}
+        <div className="sync-alert-mobile">{avisoRecusadas}</div>
+        <Outlet />
+      </main>
       <nav className="bottom-nav no-print" aria-label="Navegação móvel">
         <NavLink to="/" end><ClipboardList size={20} /><span>Ordens</span></NavLink>
         <NavLink to="/nova"><Plus size={20} /><span>Nova OS</span></NavLink>

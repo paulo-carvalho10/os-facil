@@ -65,6 +65,24 @@ async function enfileirar(
   })
 }
 
+/** Devolve uma operação recusada para a fila, por exemplo depois de ajustar uma regra no servidor. */
+export async function reenviarOperacao(operacaoId: string): Promise<void> {
+  await db.filaSync.update(operacaoId, {
+    estado: 'pendente',
+    tentativas: 0,
+    erro: undefined,
+    proximaTentativaEm: agora(),
+  })
+}
+
+/**
+ * Tira uma operação recusada da fila. O dado continua neste aparelho, mas
+ * aquela alteração não será enviada ao servidor.
+ */
+export async function descartarOperacao(operacaoId: string): Promise<void> {
+  await db.filaSync.delete(operacaoId)
+}
+
 export async function proximoNumero(): Promise<number> {
   const ultima = await db.ordens.orderBy('numero').last()
   return (ultima?.numero ?? 1000) + 1
