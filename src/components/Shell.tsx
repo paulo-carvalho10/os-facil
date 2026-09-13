@@ -38,10 +38,10 @@ export function Shell() {
             {estado === 'offline' ? <WifiOff size={17} /> : <span className={`sync-dot ${estado}`} />}
             <strong>{estado === 'sincronizado' && pendentes > 0 ? 'Alterações aguardando envio' : rotulos[estado]}</strong>
           </div>
-          <p>{pendentes} {pendentes === 1 ? 'alteração pendente' : 'alterações pendentes'}</p>
-          <button className="text-button" onClick={() => void sincronizarAgora()}>
+          <p>{supabase ? `${pendentes} ${pendentes === 1 ? 'alteração pendente' : 'alterações pendentes'}` : 'Dados salvos neste navegador'}</p>
+          {supabase && <button className="text-button" onClick={() => void sincronizarAgora()}>
             <RefreshCcw size={14} /> Tentar agora
-          </button>
+          </button>}
         </div>
         <p className="version">OS Fácil v0.1.0</p>
       </aside>
