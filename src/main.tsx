@@ -5,11 +5,12 @@ import { registerSW } from 'virtual:pwa-register'
 import { App } from './App'
 import { carregarDadosDemonstracao } from './db/seed'
 import './styles.css'
+import { modoNuvem } from './auth/supabase'
 
 registerSW({ immediate: true })
 
 async function iniciar() {
-  await carregarDadosDemonstracao()
+  if (!modoNuvem) await carregarDadosDemonstracao()
   createRoot(document.getElementById('root')!).render(
     <StrictMode>
       <BrowserRouter>

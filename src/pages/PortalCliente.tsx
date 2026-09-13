@@ -7,10 +7,11 @@ import { Timeline } from '../components/Timeline'
 import { db } from '../db/database'
 import { STATUS_OS } from '../db/types'
 import type { DadosPublicosOS } from '../db/types'
+import { supabase } from '../auth/supabase'
 
 export function PortalCliente() {
   const { codigo = '' } = useParams()
-  const ordem = useLiveQuery(() => db.ordens.where('codigoPublico').equals(codigo).first(), [codigo])
+  const ordem = useLiveQuery(async () => supabase ? null : (await db.ordens.where('codigoPublico').equals(codigo).first()) ?? null, [codigo])
   const eventos = useLiveQuery(
     () => ordem ? db.eventos.where('osId').equals(ordem.id).filter((e) => e.publico).sortBy('criadoEm') : [],
     [ordem?.id], [],
@@ -20,16 +21,17 @@ export function PortalCliente() {
 
   useEffect(() => {
     if (ordem || ordem === undefined) return
-    const baseUrl = import.meta.env.VITE_SYNC_API_URL?.trim()
-    if (!baseUrl) {
+    if (!supabase) {
       setConsultaRemotaFinalizada(true)
       return
     }
-    fetch(`${baseUrl.replace(/\/$/, '')}/public/os/${encodeURIComponent(codigo)}`)
-      .then(async (resposta) => resposta.ok ? resposta.json() as Promise<DadosPublicosOS> : null)
-      .then(setRemota)
-      .catch(() => setRemota(null))
-      .finally(() => setConsultaRemotaFinalizada(true))
+    let ativo = true
+    setConsultaRemotaFinalizada(false)
+    setRemota(null)
+    void supabase.rpc('consultar_os', { codigo }).then(({ data, error }) => {
+      if (ativo) { setRemota(error ? null : data as DadosPublicosOS | null); setConsultaRemotaFinalizada(true) }
+    })
+    return () => { ativo = false }
   }, [codigo, ordem])
 
   if (ordem === undefined) return <div className="public-page"><div className="portal-card"><div className="skeleton tall" /></div></div>
@@ -37,7 +39,7 @@ export function PortalCliente() {
   if (!ordem && !remota) return <div className="public-page"><div className="portal-card empty-state"><Wrench size={34} /><h1>Não encontramos esta OS</h1><p>Confira se o link recebido está completo.</p><Link to="/" className="back-link"><ArrowLeft size={17} /> Ir para o painel de demonstração</Link></div></div>
 
   const exibida = ordem ?? remota!
-  const eventosExibidos = ordem ? eventos : remota!.eventos.map((evento) => ({ ...evento, osId: '', publico: true, atualizadoEm: evento.criadoEm }))
+  const eventosExibidos = ordem ? eventos.map((evento) => ({ ...evento, observacao: undefined })) : remota!.eventos.map((evento) => ({ ...evento, osId: '', publico: true, atualizadoEm: evento.criadoEm }))
   const atual = STATUS_OS.indexOf(exibida.status)
   return (
     <div className="public-page">

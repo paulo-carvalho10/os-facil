@@ -51,16 +51,18 @@ pnpm build
 
 Sem configuração, a demonstração funciona integralmente no navegador e apresenta o estado “Modo local”. Para conectar um back-end:
 
-1. execute `supabase/schema.sql` em um projeto Supabase;
-2. publique a Edge Function em `supabase/functions/api`;
-3. configure autenticação e limitação de requisições antes de usar dados reais;
-4. defina `VITE_SYNC_API_URL` apontando para a função.
+1. execute `supabase/schema.sql` e as migrações de `supabase/migrations` em ordem;
+2. configure a URL e a chave publicável em `.env.local`, conforme `.env.example`;
+3. crie o usuário em Authentication e autorize seu UUID na tabela `operadores` pelo administrador;
+4. entre no aplicativo com e-mail e senha. O modo conectado inicia vazio, sem enviar o seed ao servidor.
+
+A integração atual usa Supabase Auth, RPC transacional e Storage privado diretamente. A antiga Edge Function e `src/sync/engine.ts` são protótipos desativados e não devem ser publicados. Consulte [SUPABASE.md](./SUPABASE.md).
 
 Nenhuma chave secreta deve usar o prefixo `VITE_`. A service role pertence somente ao ambiente da Edge Function.
 
 ## Privacidade da demonstração
 
-Os nomes, telefones e aparelhos incluídos no seed são fictícios. A demonstração não envia mensagens, e-mails ou cobranças. Sem `VITE_SYNC_API_URL`, nenhum dado sai do navegador.
+Os nomes, telefones e aparelhos incluídos no seed são fictícios. A demonstração não envia mensagens, e-mails ou cobranças. Sem a configuração do Supabase, os dados permanecem no navegador.
 
 ## Limites do MVP
 

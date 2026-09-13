@@ -3,7 +3,8 @@ import { useEffect, useState } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../db/database'
-import { observarSync, sincronizarAgora } from '../sync/engine'
+import { observarSync, sincronizarAgora } from '../sync/supabase-engine'
+import { supabase } from '../auth/supabase'
 
 const rotulos = {
   offline: 'Sem conexão',
@@ -43,7 +44,7 @@ export function Shell() {
         </div>
         <p className="version">OS Fácil v0.1.0</p>
       </aside>
-      <main className="main-content"><Outlet /></main>
+      <main className="main-content">{supabase && <div className="no-print" style={{ padding: '12px 24px', textAlign: 'right' }}><button className="text-button" onClick={() => void supabase!.auth.signOut({ scope: 'local' }).then(() => window.location.reload())}>Sair da conta</button></div>}<Outlet /></main>
       <nav className="bottom-nav no-print" aria-label="Navegação móvel">
         <NavLink to="/" end><ClipboardList size={20} /><span>Ordens</span></NavLink>
         <NavLink to="/nova"><Plus size={20} /><span>Nova OS</span></NavLink>

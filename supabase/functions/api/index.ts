@@ -1,14 +1,14 @@
 import { createClient } from 'npm:@supabase/supabase-js@2'
+import { bearerToken, caminhoPublico, origemPermitida } from './access.ts'
 
 const supabase = createClient(
   Deno.env.get('SUPABASE_URL')!,
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
 )
 
-const origem = Deno.env.get('ALLOWED_ORIGIN') ?? '*'
+const origem = Deno.env.get('ALLOWED_ORIGIN') ?? ''
 const cors = {
-  'access-control-allow-origin': origem,
-  'access-control-allow-headers': 'content-type,x-idempotency-key',
+  'access-control-allow-headers': 'authorization,apikey,content-type,x-idempotency-key',
   'access-control-allow-methods': 'GET,POST,OPTIONS',
 }
 
@@ -52,10 +52,21 @@ async function upsertMaisRecente(tabela: string, registro: Record<string, unknow
 }
 
 Deno.serve(async (request) => {
+  const origin = request.headers.get('origin')
+  if (!origemPermitida(origin, origem)) return resposta({ erro: 'Origem não permitida.' }, 403)
+  const result = await tratar(request)
+  if (origin) result.headers.set('access-control-allow-origin', origin)
+  result.headers.set('vary', 'Origin')
+  result.headers.set('cache-control', 'no-store')
+  result.headers.set('x-content-type-options', 'nosniff')
+  return result
+})
+
+async function tratar(request: Request): Promise<Response> {
   if (request.method === 'OPTIONS') return new Response(null, { headers: cors })
   const url = new URL(request.url)
 
-  if (request.method === 'GET' && url.pathname.includes('/public/os/')) {
+  if (request.method === 'GET' && caminhoPublico(url.pathname)) {
     const codigo = decodeURIComponent(url.pathname.split('/public/os/')[1] ?? '')
     const { data: os, error } = await supabase.from('ordens_servico')
       .select('id,codigo_publico,numero,aparelho,marca,modelo,status,atualizada_em')
@@ -72,6 +83,16 @@ Deno.serve(async (request) => {
   }
 
   if (request.method !== 'POST') return resposta({ erro: 'Método não permitido.' }, 405)
+  if (!url.pathname.endsWith('/sync') && !url.pathname.endsWith('/sync/foto')) {
+    return resposta({ erro: 'Rota não encontrada.' }, 404)
+  }
+  const token = bearerToken(request.headers.get('authorization'))
+  if (!token) return resposta({ erro: 'Autenticação necessária.' }, 401)
+  const { data: identidade, error: authError } = await supabase.auth.getUser(token)
+  if (authError || !identidade.user) return resposta({ erro: 'Sessão inválida.' }, 401)
+  const { data: operador, error: permissionError } = await supabase
+    .from('operadores').select('usuario_id').eq('usuario_id', identidade.user.id).eq('ativo', true).maybeSingle()
+  if (permissionError || !operador) return resposta({ erro: 'Acesso à oficina não autorizado.' }, 403)
   const idempotencia = request.headers.get('x-idempotency-key')
   if (!idempotencia) return resposta({ erro: 'Chave de idempotência ausente.' }, 400)
   if (await jaProcessada(idempotencia)) return resposta({ repetida: true })
@@ -103,4 +124,4 @@ Deno.serve(async (request) => {
     console.error(erro)
     return resposta({ erro: 'Não foi possível sincronizar.' }, 500)
   }
-})
+}

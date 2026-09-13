@@ -29,10 +29,16 @@ export class OSFacilDatabase extends Dexie {
       filaSync: 'id, entidade, entidadeId, estado, criadaEm, proximaTentativaEm',
       configuracoes: 'chave',
     })
+    this.version(2).stores({ ordens: 'id, numero, &codigoPublico, clienteId, status, criadaEm, atualizadaEm' })
   }
 }
 
-export const db = new OSFacilDatabase()
+export let db = new OSFacilDatabase()
+
+export function selecionarBanco(usuario: string): void {
+  db.close()
+  db = new OSFacilDatabase(`os-facil-${usuario}`)
+}
 
 function agora(): string {
   return new Date().toISOString()
@@ -75,7 +81,7 @@ export async function criarOrdem(input: NovaOSInput): Promise<OrdemServico> {
   }
   const ordem: OrdemServico = {
     id: crypto.randomUUID(),
-    numero: await proximoNumero(),
+    numero: 0,
     clienteId: cliente.id,
     aparelho: input.aparelho.trim(),
     marca: input.marca.trim(),
@@ -100,6 +106,7 @@ export async function criarOrdem(input: NovaOSInput): Promise<OrdemServico> {
   }
 
   await db.transaction('rw', [db.clientes, db.ordens, db.eventos, db.filaSync], async () => {
+    ordem.numero = await proximoNumero()
     await db.clientes.add(cliente)
     await db.ordens.add(ordem)
     await db.eventos.add(evento)

@@ -6,6 +6,7 @@ import { db } from '../db/database'
 import { STATUS_LABEL, STATUS_OS } from '../db/types'
 import { StatusBadge } from '../components/StatusBadge'
 import { carregarDadosDemonstracao } from '../db/seed'
+import { modoNuvem } from '../auth/supabase'
 
 const data = new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: 'short' })
 
@@ -49,7 +50,7 @@ export function Dashboard() {
             <option value="todos">Todos os status</option>
             {STATUS_OS.map((item) => <option value={item} key={item}>{STATUS_LABEL[item]}</option>)}
           </select>
-          <button className="text-button" onClick={() => void carregarDadosDemonstracao(true)}>Recarregar demonstração</button>
+          {!modoNuvem && <button className="text-button" onClick={() => void carregarDadosDemonstracao(true)}>Recarregar demonstração</button>}
         </div>
         <div className="order-list">
           {filtradas.map((ordem) => {
