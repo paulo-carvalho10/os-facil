@@ -37,7 +37,7 @@ Verificado em 13/09/2026: 13 testes locais aprovados, build aprovado, teste SQL 
 
 Validado no navegador em 13/09/2026: login humano, abertura da OS fictícia #1002, numeração definitiva pelo servidor, envio de foto JPEG, mudança para orçamento enviado e fila zerada. Portal consultado também pela API sem sessão: omite nota interna e dados pessoais. Objeto JPEG confirmado no Storage; tentativas de download sem sessão foram negadas. A OS e a foto sintéticas ficam identificadas como teste na oficina.
 
-Verificação em segundo navegador ainda depende da confirmação do operador. Instalação PWA e reabertura completamente offline não foram validadas nesta etapa.
+O operador confirmou no Opera que a OS #1002 e a foto criadas pelo Codex apareceram no segundo navegador. Instalação PWA e reabertura completamente offline não foram validadas nesta etapa.
 
 Não foi configurado SMTP próprio, recuperação de senha no aplicativo, backup externo nem restauração periódica. Não há garantia de backup operacional nesta etapa. Antes de usar dados reais, definir retenção, exportação do banco e dos objetos privados e testar restauração. Consultar as condições do plano gratuito no painel antes de produção.
 
