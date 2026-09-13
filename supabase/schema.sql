@@ -63,7 +63,8 @@ alter table os_eventos enable row level security;
 alter table os_fotos enable row level security;
 alter table sync_receipts enable row level security;
 
--- A Edge Function usa a service role. Nenhuma tabela privada é exposta ao navegador.
+-- Começa sem nenhum acesso. A migração 002 libera leitura para operadores ativos (RLS);
+-- escrita direta continua proibida e só acontece pela função sincronizar_operacao.
 revoke all on clientes, ordens_servico, os_eventos, os_fotos, sync_receipts from anon, authenticated;
 
 insert into storage.buckets (id, name, public)

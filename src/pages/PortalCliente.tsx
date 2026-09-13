@@ -8,10 +8,13 @@ import { db } from '../db/database'
 import { STATUS_OS } from '../db/types'
 import type { DadosPublicosOS } from '../db/types'
 import { supabase } from '../auth/supabase'
+import { codigoPublicoValido } from '../domain/public-code'
 
 export function PortalCliente() {
   const { codigo = '' } = useParams()
-  const ordem = useLiveQuery(async () => supabase ? null : (await db.ordens.where('codigoPublico').equals(codigo).first()) ?? null, [codigo])
+  // Um código fora do formato não existe em lugar nenhum: nem consulta o banco.
+  const formatoValido = codigoPublicoValido(codigo)
+  const ordem = useLiveQuery(async () => supabase || !formatoValido ? null : (await db.ordens.where('codigoPublico').equals(codigo).first()) ?? null, [codigo, formatoValido])
   const eventos = useLiveQuery(
     () => ordem ? db.eventos.where('osId').equals(ordem.id).filter((e) => e.publico).sortBy('criadoEm') : [],
     [ordem?.id], [],
@@ -21,7 +24,7 @@ export function PortalCliente() {
 
   useEffect(() => {
     if (ordem || ordem === undefined) return
-    if (!supabase) {
+    if (!supabase || !formatoValido) {
       setConsultaRemotaFinalizada(true)
       return
     }
@@ -32,7 +35,7 @@ export function PortalCliente() {
       if (ativo) { setRemota(error ? null : data as DadosPublicosOS | null); setConsultaRemotaFinalizada(true) }
     })
     return () => { ativo = false }
-  }, [codigo, ordem])
+  }, [codigo, formatoValido, ordem])
 
   if (ordem === undefined) return <div className="public-page"><div className="portal-card"><div className="skeleton tall" /></div></div>
   if (!ordem && !consultaRemotaFinalizada) return <div className="public-page"><div className="portal-card"><div className="skeleton tall" /></div></div>
