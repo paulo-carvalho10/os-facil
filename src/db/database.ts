@@ -10,6 +10,7 @@ import type {
   StatusOS,
 } from './types'
 import { gerarCodigoPublico } from '../domain/public-code'
+import { DadosInvalidos, validarNovaOS, validarObservacao } from '../domain/validacao'
 
 export class OSFacilDatabase extends Dexie {
   clientes!: EntityTable<Cliente, 'id'>
@@ -70,6 +71,9 @@ export async function proximoNumero(): Promise<number> {
 }
 
 export async function criarOrdem(input: NovaOSInput): Promise<OrdemServico> {
+  // A validação fica aqui, e não só na tela: nada inválido entra na fila.
+  const erros = validarNovaOS(input)
+  if (erros.length) throw new DadosInvalidos(erros)
   const instante = agora()
   const cliente: Cliente = {
     id: crypto.randomUUID(),
@@ -123,6 +127,8 @@ export async function atualizarStatus(
   observacao: string,
   publico = true,
 ): Promise<void> {
+  const erro = validarObservacao(observacao)
+  if (erro) throw new DadosInvalidos([erro])
   const instante = agora()
   await db.transaction('rw', [db.ordens, db.eventos, db.filaSync], async () => {
     const ordem = await db.ordens.get(osId)

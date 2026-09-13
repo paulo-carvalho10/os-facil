@@ -9,6 +9,7 @@ import { Timeline } from '../components/Timeline'
 import { atualizarStatus, db } from '../db/database'
 import { STATUS_LABEL } from '../db/types'
 import { proximoStatus } from '../domain/status'
+import { LIMITES } from '../domain/validacao'
 
 const moeda = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
 const dataHora = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'medium', timeStyle: 'short' })
@@ -22,6 +23,7 @@ export function DetalheOrdem() {
   const [observacao, setObservacao] = useState('')
   const [copiado, setCopiado] = useState(false)
   const [salvandoStatus, setSalvandoStatus] = useState(false)
+  const [erroStatus, setErroStatus] = useState('')
   const urls = useMemo(() => fotos.map((foto) => ({ id: foto.id, url: URL.createObjectURL(foto.arquivo) })), [fotos])
 
   if (ordem === undefined) return <div className="page"><div className="skeleton tall" /></div>
@@ -35,9 +37,12 @@ export function DetalheOrdem() {
   async function avancar() {
     if (!seguinte) return
     setSalvandoStatus(true)
+    setErroStatus('')
     try {
       await atualizarStatus(ordem!.id, seguinte, observacao)
       setObservacao('')
+    } catch (falha) {
+      setErroStatus(falha instanceof Error ? falha.message : 'Não foi possível atualizar o status.')
     } finally {
       setSalvandoStatus(false)
     }
@@ -84,7 +89,15 @@ export function DetalheOrdem() {
         </div>
 
         <aside className="detail-side">
-          {seguinte && <section className="panel status-action no-print"><p className="eyebrow">Próxima etapa</p><h2>{STATUS_LABEL[seguinte]}</h2><textarea rows={3} value={observacao} onChange={(e) => setObservacao(e.target.value)} placeholder="Observação para a linha do tempo" /><button className="button primary full" onClick={() => void avancar()} disabled={salvandoStatus}><CheckCircle2 size={18} /> Atualizar status</button></section>}
+          {seguinte && (
+            <section className="panel status-action no-print">
+              <p className="eyebrow">Próxima etapa</p>
+              <h2>{STATUS_LABEL[seguinte]}</h2>
+              <textarea rows={3} value={observacao} maxLength={LIMITES.observacao.max} onChange={(e) => setObservacao(e.target.value)} placeholder="Observação para a linha do tempo" />
+              {erroStatus && <p className="form-error">{erroStatus}</p>}
+              <button className="button primary full" onClick={() => void avancar()} disabled={salvandoStatus}><CheckCircle2 size={18} /> Atualizar status</button>
+            </section>
+          )}
           <section className="panel detail-card"><p className="eyebrow">Histórico</p><h2>Linha do tempo</h2><Timeline eventos={eventos} /></section>
           <section className="panel public-link-card no-print"><p className="eyebrow">Portal do cliente</p><h2>Acompanhamento sem login</h2><p>O código não revela o número sequencial da OS.</p><code>{ordem.codigoPublico}</code><div className="row-actions"><button className="button secondary" onClick={() => void copiar()}><Copy size={17} /> {copiado ? 'Copiado' : 'Copiar link'}</button><a className="button ghost" href={linkPublico} target="_blank"><ExternalLink size={17} /> Abrir</a></div></section>
         </aside>
