@@ -3,11 +3,12 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
 
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   plugins: [
     react(),
     tailwindcss(),
     VitePWA({
+      disable: mode === 'demo',
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg'],
       manifest: {
@@ -35,4 +36,4 @@ export default defineConfig({
     globals: true,
     setupFiles: ['./tests/setup.ts']
   }
-})
+}))

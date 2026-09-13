@@ -28,7 +28,9 @@ export function DetalheOrdem() {
   if (!ordem) return <div className="page"><div className="empty-state"><strong>Ordem não encontrada</strong><Link to="/">Voltar para a lista</Link></div></div>
 
   const seguinte = proximoStatus(ordem.status)
-  const linkPublico = `${location.origin}/os/${ordem.codigoPublico}`
+  const linkPublico = import.meta.env.MODE === 'demo'
+    ? `${location.origin}${import.meta.env.BASE_URL}#/os/${ordem.codigoPublico}`
+    : `${location.origin}/os/${ordem.codigoPublico}`
 
   async function avancar() {
     if (!seguinte) return

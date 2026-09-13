@@ -22,6 +22,7 @@ export function Shell() {
 
   return (
     <div className="app-shell">
+      {!supabase && <div className="no-print" style={{ position: 'fixed', bottom: 72, right: 16, zIndex: 10, maxWidth: 300, background: '#fff', padding: 12, border: '1px solid #ddd', borderRadius: 12, fontSize: 12 }}>Demonstração com dados fictícios. Alterações ficam apenas neste navegador.</div>}
       <aside className="sidebar no-print">
         <NavLink to="/" className="brand" aria-label="OS Fácil - início">
           <span className="brand-mark"><ClipboardList size={21} /></span>

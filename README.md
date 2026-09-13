@@ -1,71 +1,78 @@
 # OS Fácil
 
-Aplicativo web de ordem de serviço para assistências técnicas. A oficina abre e atualiza atendimentos mesmo sem internet; quando uma API é configurada, a fila sincroniza em segundo plano. O cliente acompanha o reparo por um código público não sequencial.
+Aplicativo de ordens de serviço para assistências técnicas, desenvolvido como projeto de portfólio. Permite cadastrar atendimentos, acompanhar etapas de reparo, registrar fotos e consultar o andamento por um portal do cliente.
 
-![Painel do OS Fácil](./docs/painel-desktop.png)
+**[Abrir demonstração pública](https://paulo-carvalho10.github.io/os-facil/)** · Sem cadastro ou senha.
 
-## O que já funciona
+![Painel com ordens fictícias](docs/painel-desktop.png)
 
-- abertura de OS com cliente, aparelho, IMEI, defeito, acessórios e orçamento;
-- gravação imediata no IndexedDB com Dexie;
-- oito ordens de demonstração em fases diferentes;
-- busca por cliente, aparelho ou número e filtro de status;
-- esteira completa de seis fases e linha do tempo;
-- fotos pela câmera ou galeria, reduzidas antes de salvar como blob;
-- leitura de IMEI, número de série ou QR Code pela câmera quando o navegador oferece `BarcodeDetector`;
-- assinatura do cliente em canvas;
-- portal público em `/os/[codigo]`, sem dados pessoais;
-- impressão em A4 e estilo compacto para 80 mm;
-- manifest, service worker e modo instalável;
-- fila idempotente com repetição exponencial;
-- back-end opcional para Supabase;
-- layout responsivo para celular e computador.
+## Experimente
 
-## Decisões técnicas
+1. Abra a demonstração e explore as oito ordens fictícias.
+2. Busque um cliente ou filtre as ordens por status.
+3. Abra uma OS para ver os dados do aparelho e atualizar a etapa.
+4. Cadastre uma nova OS, adicione uma foto de teste e explore a impressão.
+5. Use **Abrir** no cartão Portal do cliente para visualizar o acompanhamento.
+6. Clique em **Recarregar demonstração** para restaurar os exemplos. Isso apaga as alterações locais da demonstração.
 
-O IndexedDB é a fonte imediata da tela: nenhuma escrita espera a rede. Cada alteração gera uma operação idempotente na fila. Fotos continuam como blobs enquanto o dispositivo está offline. Conflitos usam a data de alteração mais recente; mudanças de status criam eventos imutáveis.
+A demonstração usa IndexedDB no seu navegador. Não envia dados ao Supabase, não exige login e não compartilha alterações entre visitantes. Use apenas dados fictícios. Os links de acompanhamento dessa versão dependem dos dados do mesmo navegador.
 
-O código público usa 16 caracteres aleatórios gerados pela Web Crypto API. Ele não contém o número da OS nem dados do cliente, impedindo a enumeração simples de atendimentos.
+## Funcionalidades
 
-Os detalhes estão em [ARQUITETURA.md](./ARQUITETURA.md).
+- Cadastro de cliente, aparelho, defeito, acessórios e orçamento.
+- Busca, filtros e resumo de atendimentos.
+- Seis etapas de reparo e histórico de alterações.
+- Fotos pela galeria ou câmera, reduzidas antes de salvar.
+- Assinatura em canvas e estilos de impressão A4/80 mm.
+- Portal por código aleatório, sem exibir dados pessoais, fotos ou notas internas.
+- Leitura de códigos quando o navegador oferece BarcodeDetector.
+- Persistência local das alterações.
 
-## Executar
+## Integração com Supabase
 
-Requer Node.js 20 ou superior e pnpm.
+![Detalhes da ordem de serviço](docs/detalhe-os.png)
 
-```bash
+![Portal de acompanhamento do cliente](docs/portal-cliente.png)
+
+O código também inclui uma versão conectada: login por e-mail e senha, autorização de operadores por RLS, fotos privadas e sincronização periódica entre dispositivos. Essa integração foi verificada separadamente com criação de OS, envio de foto e consulta em dois navegadores.
+
+A demonstração pública é compilada em modo `demo`, que desativa o cliente Supabase mesmo se houver configuração local. A versão conectada exige seu próprio ambiente e operadores autorizados. Veja [SUPABASE.md](SUPABASE.md) e [ARQUITETURA.md](ARQUITETURA.md).
+
+## Tecnologias
+
+| Área | Tecnologias |
+| --- | --- |
+| Interface | React 19, TypeScript, Vite, React Router, Lucide |
+| Estilos | CSS e Tailwind CSS 4 |
+| Dados locais | Dexie / IndexedDB |
+| Backend opcional | Supabase Auth, PostgreSQL, RLS e Storage |
+| Verificação | Vitest, fake-indexeddb e testes SQL de integração |
+| Publicação | GitHub Pages e GitHub Actions |
+
+## Executar localmente
+
+Requer Node.js 24 e pnpm 11.
+
+```sh
 pnpm install
-pnpm dev
+pnpm dev --mode demo
 ```
 
-Acesse `http://127.0.0.1:5173`. Para testar o portal, abra uma OS e use o botão **Abrir** no cartão “Portal do cliente”.
+Para usar Supabase, configure as variáveis de `.env.example` em `.env.local`, aplique as migrações e execute `pnpm dev`. Nunca coloque chaves secretas em variáveis com prefixo `VITE_`.
 
-## Testes e build
-
-```bash
+```sh
 pnpm test
-pnpm build
+pnpm build:demo
 ```
 
-## Sincronização opcional
+O workflow publica a pasta `dist` no GitHub Pages após os testes. Rotas da demonstração usam hash para permitir navegação e recarregamento sem configuração de servidor.
 
-Sem configuração, a demonstração funciona integralmente no navegador e apresenta o estado “Modo local”. Para conectar um back-end:
+## Validação e limites
 
-1. execute `supabase/schema.sql` e as migrações de `supabase/migrations` em ordem;
-2. configure a URL e a chave publicável em `.env.local`, conforme `.env.example`;
-3. crie o usuário em Authentication e autorize seu UUID na tabela `operadores` pelo administrador;
-4. entre no aplicativo com e-mail e senha. O modo conectado inicia vazio, sem enviar o seed ao servidor.
+13 testes automatizados locais aprovados, além de verificações SQL de RLS, autorização, idempotência e privacidade. O fluxo conectado foi testado com login humano, criação de OS, upload privado e sincronização entre Codex e Opera.
 
-A integração atual usa Supabase Auth, RPC transacional e Storage privado diretamente. A antiga Edge Function e `src/sync/engine.ts` são protótipos desativados e não devem ser publicados. Consulte [SUPABASE.md](./SUPABASE.md).
+Este é um MVP de portfólio, não um produto pronto para operação comercial. Ainda não foram validados impressão física, instalação PWA e reabertura completamente offline. A demonstração no Pages não registra service worker. Recuperação de senha na interface, backup operacional e testes de conflitos simultâneos permanecem pendentes. Câmera e leitura de códigos dependem do navegador e de permissão do visitante.
 
-Nenhuma chave secreta deve usar o prefixo `VITE_`. A service role pertence somente ao ambiente da Edge Function.
+Estoque, nota fiscal, pagamentos e multiempresa estão fora do escopo atual: [V2.md](V2.md).
 
-## Privacidade da demonstração
-
-Os nomes, telefones e aparelhos incluídos no seed são fictícios. A demonstração não envia mensagens, e-mails ou cobranças. Sem a configuração do Supabase, os dados permanecem no navegador.
-
-## Limites do MVP
-
-Estoque, nota fiscal, comissão, cobrança, chat e multiempresa estão congelados em [V2.md](./V2.md).
-
-OS Fácil v0.1.0
+Desenvolvido por [Paulo Carvalho](https://github.com/paulo-carvalho10).
