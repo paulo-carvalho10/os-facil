@@ -1,5 +1,6 @@
-import Dexie, { type EntityTable } from 'dexie'
+import Dexie, { type EntityTable, type Transaction } from 'dexie'
 import type {
+  AssinaturaOS,
   Cliente,
   Configuracao,
   EventoOS,
@@ -10,12 +11,13 @@ import type {
   StatusOS,
 } from './types'
 import { gerarCodigoPublico } from '../domain/public-code'
-import { DadosInvalidos, validarNovaOS, validarObservacao } from '../domain/validacao'
+import { DadosInvalidos, validarAssinatura, validarNovaOS, validarObservacao } from '../domain/validacao'
 
 export class OSFacilDatabase extends Dexie {
   clientes!: EntityTable<Cliente, 'id'>
   ordens!: EntityTable<OrdemServico, 'id'>
   eventos!: EntityTable<EventoOS, 'id'>
+  assinaturas!: EntityTable<AssinaturaOS, 'id'>
   fotos!: EntityTable<FotoOS, 'id'>
   filaSync!: EntityTable<OperacaoSync, 'id'>
   configuracoes!: EntityTable<Configuracao, 'chave'>
@@ -31,7 +33,54 @@ export class OSFacilDatabase extends Dexie {
       configuracoes: 'chave',
     })
     this.version(2).stores({ ordens: 'id, numero, &codigoPublico, clienteId, status, criadaEm, atualizadaEm' })
+    this.version(3).stores({ assinaturas: 'id, osId, criadoEm' }).upgrade(migrarAssinaturasLegadas)
   }
+}
+
+type OrdemLegada = OrdemServico & { assinaturaPng?: string }
+
+/**
+ * Versão 3: a assinatura sai da OS e vira registro próprio.
+ *
+ * O cuidado é não perder nem duplicar assinatura na troca:
+ * - Se nenhuma operação da fila carrega aquela assinatura, ela já está no
+ *   servidor. O registro local recebe o id da própria OS, o mesmo id que a
+ *   migração 004 usa ao copiar a coluna antiga, e nada é enfileirado.
+ * - Se ainda há uma operação pendente com ela, o servidor não a tem. Ela ganha
+ *   id novo e vai para a fila como assinatura, porque a RPC nova ignora o campo
+ *   antigo dentro da OS.
+ */
+async function migrarAssinaturasLegadas(tx: Transaction): Promise<void> {
+  const ordens = (await tx.table<OrdemLegada>('ordens').toArray()).filter((ordem) => ordem.assinaturaPng)
+  if (!ordens.length) return
+
+  const fila = await tx.table<OperacaoSync>('filaSync').where('entidade').equals('os').toArray()
+  const instante = new Date().toISOString()
+
+  for (const ordem of ordens) {
+    const pendente = fila.some((operacao) => {
+      const payload = operacao.payload as OrdemLegada
+      return operacao.entidadeId === ordem.id && payload.assinaturaPng === ordem.assinaturaPng
+    })
+    const assinatura: AssinaturaOS = {
+      id: pendente ? crypto.randomUUID() : ordem.id,
+      osId: ordem.id,
+      png: ordem.assinaturaPng!,
+      criadoEm: ordem.atualizadaEm,
+      atualizadoEm: ordem.atualizadaEm,
+    }
+    await tx.table('assinaturas').put(assinatura)
+    if (pendente) {
+      await tx.table('filaSync').add({
+        id: crypto.randomUUID(), entidade: 'assinatura', entidadeId: assinatura.id, acao: 'upsert',
+        payload: assinatura, criadaEm: instante, tentativas: 0, proximaTentativaEm: instante, estado: 'pendente',
+      } satisfies OperacaoSync)
+    }
+  }
+
+  await tx.table<OrdemLegada>('ordens').toCollection().modify((ordem) => {
+    delete ordem.assinaturaPng
+  })
 }
 
 export let db = new OSFacilDatabase()
@@ -196,13 +245,27 @@ export async function salvarFoto(osId: string, arquivo: Blob, nomeArquivo: strin
   })
 }
 
-export async function salvarAssinatura(osId: string, assinaturaPng: string): Promise<void> {
+/**
+ * Grava a assinatura como registro novo, sem tocar na OS. Por isso ela não
+ * disputa o "último horário vence" com as mudanças de status.
+ */
+export async function salvarAssinatura(osId: string, png: string): Promise<AssinaturaOS> {
+  const erro = validarAssinatura(png)
+  if (erro) throw new DadosInvalidos([erro])
+
   const instante = agora()
-  await db.transaction('rw', [db.ordens, db.filaSync], async () => {
-    const ordem = await db.ordens.get(osId)
-    if (!ordem) throw new Error('Ordem de serviço não encontrada.')
-    const atualizada = { ...ordem, assinaturaPng, atualizadaEm: instante }
-    await db.ordens.put(atualizada)
-    await enfileirar('os', osId, 'upsert', atualizada)
+  const assinatura: AssinaturaOS = { id: crypto.randomUUID(), osId, png, criadoEm: instante, atualizadoEm: instante }
+
+  await db.transaction('rw', [db.ordens, db.assinaturas, db.filaSync], async () => {
+    if (!(await db.ordens.get(osId))) throw new Error('Ordem de serviço não encontrada.')
+    await db.assinaturas.add(assinatura)
+    await enfileirar('assinatura', assinatura.id, 'upsert', assinatura)
   })
+  return assinatura
+}
+
+/** A assinatura que vale para a OS: a mais recente. */
+export async function assinaturaVigente(osId: string): Promise<AssinaturaOS | null> {
+  const assinaturas = await db.assinaturas.where('osId').equals(osId).sortBy('criadoEm')
+  return assinaturas.at(-1) ?? null
 }

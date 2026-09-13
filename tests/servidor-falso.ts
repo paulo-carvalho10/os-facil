@@ -8,12 +8,12 @@
  *  - chave estrangeira ausente, com o código 23503;
  *  - upsert de OS que só aplica quando atualizada_em é mais recente, e responde
  *    ok mesmo quando descarta (o where da migração);
- *  - eventos imutáveis: um id repetido não reescreve nada;
+ *  - eventos e assinaturas imutáveis: um id repetido não reescreve nada;
  *  - falha de rede, que chega do supabase-js com código vazio.
  */
 
 type Linha = Record<string, unknown> & { id: string }
-type NomeTabela = 'clientes' | 'ordens_servico' | 'os_eventos' | 'os_fotos'
+type NomeTabela = 'clientes' | 'ordens_servico' | 'os_eventos' | 'os_assinaturas' | 'os_fotos'
 
 const ERRO_DE_REDE = { message: 'TypeError: Failed to fetch', details: '', hint: '', code: '' }
 
@@ -22,6 +22,7 @@ export const servidor = {
     clientes: new Map<string, Linha>(),
     ordens_servico: new Map<string, Linha>(),
     os_eventos: new Map<string, Linha>(),
+    os_assinaturas: new Map<string, Linha>(),
     os_fotos: new Map<string, Linha>(),
   } as Record<NomeTabela, Map<string, Linha>>,
   sequencia: 1000,
@@ -65,7 +66,7 @@ export const servidor = {
   },
 
   aplicar(entidade: string, p: Record<string, any>) {
-    const { clientes, ordens_servico: ordens, os_eventos: eventos } = this.tabelas
+    const { clientes, ordens_servico: ordens, os_eventos: eventos, os_assinaturas: assinaturas } = this.tabelas
     const alterado = (p.atualizadoEm ?? p.atualizadaEm) as string
 
     if (entidade === 'cliente') {
@@ -97,6 +98,17 @@ export const servidor = {
       if (!ordens.has(p.osId)) return { message: 'violates foreign key constraint "os_eventos_os_id_fkey"', code: '23503' }
       if (!eventos.has(p.id)) {
         eventos.set(p.id, { id: p.id, os_id: p.osId, status: p.status, observacao: p.observacao ?? null, publico: p.publico, criado_em: p.criadoEm, atualizado_em: alterado })
+      }
+      return null
+    }
+
+    if (entidade === 'assinatura') {
+      if (!ordens.has(p.osId)) return { message: 'violates foreign key constraint "os_assinaturas_os_id_fkey"', code: '23503' }
+      if (!String(p.png).startsWith('data:image/png;base64,')) {
+        return { message: 'new row violates check constraint "assinatura_png_valida"', code: '23514' }
+      }
+      if (!assinaturas.has(p.id)) {
+        assinaturas.set(p.id, { id: p.id, os_id: p.osId, png: p.png, criado_em: p.criadoEm, atualizado_em: alterado })
       }
       return null
     }

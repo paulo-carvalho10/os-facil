@@ -6,6 +6,9 @@ export function SignaturePad({ osId, assinaturaAtual }: { osId: string; assinatu
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const desenhando = useRef(false)
   const [salva, setSalva] = useState(Boolean(assinaturaAtual))
+  // Só há o que salvar depois de pelo menos um traço desde a última limpeza.
+  const [temTraco, setTemTraco] = useState(false)
+  const [erro, setErro] = useState('')
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -16,9 +19,13 @@ export function SignaturePad({ osId, assinaturaAtual }: { osId: string; assinatu
     contexto.lineJoin = 'round'
     contexto.lineWidth = 2.5
     contexto.strokeStyle = '#171a16'
+    setSalva(Boolean(assinaturaAtual))
     if (assinaturaAtual) {
       const imagem = new Image()
-      imagem.onload = () => contexto.drawImage(imagem, 0, 0, canvas.width, canvas.height)
+      imagem.onload = () => {
+        contexto.clearRect(0, 0, canvas.width, canvas.height)
+        contexto.drawImage(imagem, 0, 0, canvas.width, canvas.height)
+      }
       imagem.src = assinaturaAtual
     }
   }, [assinaturaAtual])
@@ -39,7 +46,6 @@ export function SignaturePad({ osId, assinaturaAtual }: { osId: string; assinatu
     const atual = ponto(evento)
     contexto.beginPath()
     contexto.moveTo(atual.x, atual.y)
-    setSalva(false)
   }
 
   function mover(evento: React.PointerEvent<HTMLCanvasElement>) {
@@ -48,18 +54,26 @@ export function SignaturePad({ osId, assinaturaAtual }: { osId: string; assinatu
     const contexto = evento.currentTarget.getContext('2d')!
     contexto.lineTo(atual.x, atual.y)
     contexto.stroke()
+    setTemTraco(true)
+    setSalva(false)
   }
 
   function limpar() {
     const canvas = canvasRef.current!
     canvas.getContext('2d')!.clearRect(0, 0, canvas.width, canvas.height)
+    setTemTraco(false)
     setSalva(false)
   }
 
   async function salvar() {
-    const png = canvasRef.current!.toDataURL('image/png')
-    await salvarAssinatura(osId, png)
-    setSalva(true)
+    setErro('')
+    try {
+      await salvarAssinatura(osId, canvasRef.current!.toDataURL('image/png'))
+      setTemTraco(false)
+      setSalva(true)
+    } catch (falha) {
+      setErro(falha instanceof Error ? falha.message : 'Não foi possível salvar a assinatura.')
+    }
   }
 
   return (
@@ -69,9 +83,12 @@ export function SignaturePad({ osId, assinaturaAtual }: { osId: string; assinatu
         onPointerUp={() => { desenhando.current = false }}
         onPointerCancel={() => { desenhando.current = false }} />
       <div className="signature-line">Assinatura do cliente</div>
+      {erro && <p className="form-error">{erro}</p>}
       <div className="row-actions no-print">
         <button className="button ghost" onClick={limpar}><Eraser size={17} /> Limpar</button>
-        <button className="button secondary" onClick={() => void salvar()}><Save size={17} /> {salva ? 'Assinatura salva' : 'Salvar assinatura'}</button>
+        <button className="button secondary" onClick={() => void salvar()} disabled={!temTraco}>
+          <Save size={17} /> {salva ? 'Assinatura salva' : 'Salvar assinatura'}
+        </button>
       </div>
     </div>
   )

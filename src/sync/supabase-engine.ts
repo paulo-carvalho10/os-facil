@@ -1,5 +1,5 @@
 import { db, type OSFacilDatabase } from '../db/database'
-import type { Cliente, EventoOS, OperacaoSync, OrdemServico } from '../db/types'
+import type { AssinaturaOS, Cliente, EventoOS, OperacaoSync, OrdemServico } from '../db/types'
 import {
   criarPlanoDaFila,
   erroDefinitivo,
@@ -116,6 +116,7 @@ async function baixar(banco: OSFacilDatabase) {
     ['clientes', 'clientes', 'cliente'],
     ['ordens_servico', 'ordens', 'os'],
     ['os_eventos', 'eventos', 'evento'],
+    ['os_assinaturas', 'assinaturas', 'assinatura'],
   ] as const
 
   for (const [remota, local, entidade] of tabelas) {
@@ -125,7 +126,9 @@ async function baixar(banco: OSFacilDatabase) {
 
       await banco.transaction('rw', [banco[local], banco.filaSync], async () => {
         for (const registro of data) {
-          const convertido = camel(registro) as unknown as Cliente & OrdemServico & EventoOS
+          // A coluna antiga continua no banco para não apagar dados; o aparelho não a guarda mais.
+          const { assinatura_png: _legada, ...colunas } = registro as Record<string, unknown>
+          const convertido = camel(colunas) as unknown as Cliente & OrdemServico & EventoOS & AssinaturaOS
           const pendente = await banco.filaSync
             .where('entidadeId').equals(convertido.id)
             .filter((operacao) => operacao.entidade === entidade)

@@ -6,7 +6,7 @@ vi.mock('../src/auth/supabase', async () => {
   return { supabase: servidor.cliente, modoNuvem: true, demonstracaoPublica: false }
 })
 
-import { criarOrdem, db, reenviarOperacao } from '../src/db/database'
+import { assinaturaVigente, atualizarStatus, criarOrdem, db, reenviarOperacao, salvarAssinatura } from '../src/db/database'
 import type { NovaOSInput } from '../src/db/types'
 import { observarSync, sincronizarAgora } from '../src/sync/supabase-engine'
 
@@ -100,6 +100,12 @@ describe('fila de sincronização', () => {
     expect(await db.filaSync.count()).toBe(0)
   })
 
+  it('rejeita no aparelho uma assinatura que não é PNG', async () => {
+    const ordem = await criarOrdem(base)
+    await expect(salvarAssinatura(ordem.id, 'nao-e-png')).rejects.toThrow(/PNG/)
+    expect(await db.assinaturas.count()).toBe(0)
+  })
+
   it('falha de rede para o ciclo sem marcar nada como recusado e retoma depois', async () => {
     const ordem = await criarOrdem(base)
     servidor.falhasDeRede = 1
@@ -120,5 +126,61 @@ describe('fila de sincronização', () => {
     expect(await db.filaSync.count()).toBe(0)
     expect(servidor.tabelas.ordens_servico.has(ordem.id)).toBe(true)
     expect(estados.at(-1)).toBe('sincronizado')
+  })
+})
+
+describe('assinatura', () => {
+  const PNG = 'data:image/png;base64,ASSINATURA'
+
+  it('assinatura colhida offline sobrevive a uma mudança de status posterior em outro aparelho', async () => {
+    // Aparelho A abre a OS e sincroniza.
+    const ordem = await criarOrdem(base)
+    await sincronizarAgora()
+    expect(await db.filaSync.count()).toBe(0)
+
+    // 12:10, aparelho A sem internet: o cliente assina.
+    vi.setSystemTime(T0 + 10 * 60_000)
+    await salvarAssinatura(ordem.id, PNG)
+
+    // 12:15, aparelho B, que nunca viu a assinatura, avança o status e sincroniza.
+    const linha = servidor.tabelas.ordens_servico.get(ordem.id)!
+    servidor.tabelas.ordens_servico.set(ordem.id, {
+      ...linha, status: 'orcamento_enviado', atualizada_em: new Date(T0 + 15 * 60_000).toISOString(),
+    })
+
+    // 12:20, aparelho A volta a ter internet.
+    vi.setSystemTime(T0 + 20 * 60_000)
+    await sincronizarAgora()
+
+    expect(await db.filaSync.count()).toBe(0)
+    expect((await assinaturaVigente(ordem.id))?.png).toBe(PNG)
+    expect([...servidor.tabelas.os_assinaturas.values()].map((a) => a.png)).toEqual([PNG])
+    // O status de B também vale: nada foi perdido de nenhum dos lados.
+    expect((await db.ordens.get(ordem.id))?.status).toBe('orcamento_enviado')
+  })
+
+  it('assinar de novo cria outro registro e vale o mais recente', async () => {
+    const ordem = await criarOrdem(base)
+    await salvarAssinatura(ordem.id, `${PNG}-1`)
+    vi.setSystemTime(T0 + 60_000)
+    await salvarAssinatura(ordem.id, `${PNG}-2`)
+    await atualizarStatus(ordem.id, 'orcamento_enviado', '')
+
+    await sincronizarAgora()
+
+    expect(servidor.tabelas.os_assinaturas.size).toBe(2)
+    expect((await assinaturaVigente(ordem.id))?.png).toBe(`${PNG}-2`)
+    expect(await db.filaSync.count()).toBe(0)
+  })
+
+  it('a coluna antiga que ainda existe no servidor não volta para o aparelho', async () => {
+    const ordem = await criarOrdem(base)
+    await sincronizarAgora()
+    const linha = servidor.tabelas.ordens_servico.get(ordem.id)!
+    servidor.tabelas.ordens_servico.set(ordem.id, { ...linha, assinatura_png: 'data:image/png;base64,ANTIGA' })
+
+    await sincronizarAgora()
+
+    expect(await db.ordens.get(ordem.id)).not.toHaveProperty('assinaturaPng')
   })
 })

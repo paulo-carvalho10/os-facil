@@ -10,6 +10,7 @@ const ROTULO: Record<OperacaoSync['entidade'], string> = {
   cliente: 'Cadastro de cliente',
   os: 'Dados da OS',
   evento: 'Mudança de status',
+  assinatura: 'Assinatura do cliente',
   foto: 'Foto',
 }
 

@@ -6,7 +6,7 @@ import { PhotoCapture } from '../components/PhotoCapture'
 import { SignaturePad } from '../components/SignaturePad'
 import { StatusBadge } from '../components/StatusBadge'
 import { Timeline } from '../components/Timeline'
-import { atualizarStatus, db } from '../db/database'
+import { assinaturaVigente, atualizarStatus, db } from '../db/database'
 import { STATUS_LABEL } from '../db/types'
 import { proximoStatus } from '../domain/status'
 import { LIMITES } from '../domain/validacao'
@@ -20,6 +20,7 @@ export function DetalheOrdem() {
   const cliente = useLiveQuery(() => ordem ? db.clientes.get(ordem.clienteId) : undefined, [ordem?.clienteId])
   const eventos = useLiveQuery(() => db.eventos.where('osId').equals(id).sortBy('criadoEm'), [id], [])
   const fotos = useLiveQuery(() => db.fotos.where('osId').equals(id).toArray(), [id], [])
+  const assinatura = useLiveQuery(() => assinaturaVigente(id), [id])
   const [observacao, setObservacao] = useState('')
   const [copiado, setCopiado] = useState(false)
   const [salvandoStatus, setSalvandoStatus] = useState(false)
@@ -84,7 +85,7 @@ export function DetalheOrdem() {
 
           <section className="panel detail-card">
             <div className="section-heading"><div><p className="eyebrow">Comprovante</p><h2>Assinatura na entrega</h2></div></div>
-            <SignaturePad osId={ordem.id} assinaturaAtual={ordem.assinaturaPng} />
+            <SignaturePad osId={ordem.id} assinaturaAtual={assinatura?.png} />
           </section>
         </div>
 

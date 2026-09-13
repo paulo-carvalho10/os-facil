@@ -7,7 +7,7 @@ import { deveTentarAgora } from './sync'
  * Duas perguntas decidem o que fazer com cada operação:
  *
  * 1. Ela depende de algo que ainda não chegou ao servidor? Uma OS precisa do
- *    cliente; eventos e fotos precisam da OS. Se a dependência
+ *    cliente; eventos, assinaturas e fotos precisam da OS. Se a dependência
  *    está recusada ou esperando nova tentativa, a operação fica retida.
  *
  * 2. Quando falha, a culpa é da conexão ou dos dados? Falha de conexão para o
@@ -20,7 +20,8 @@ const PRIORIDADE: Record<OperacaoSync['entidade'], number> = {
   cliente: 0,
   os: 1,
   evento: 2,
-  foto: 3,
+  assinatura: 3,
+  foto: 4,
 }
 
 export function ordenarFila(operacoes: OperacaoSync[]): OperacaoSync[] {

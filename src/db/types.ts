@@ -43,7 +43,6 @@ export interface OrdemServico {
   atualizadaEm: string
   entregueEm?: string
   codigoPublico: string
-  assinaturaPng?: string
   sincronizadaEm?: string
 }
 
@@ -68,7 +67,24 @@ export interface FotoOS {
   enviada: boolean
 }
 
-export type EntidadeSincronizavel = 'cliente' | 'os' | 'evento' | 'foto'
+/**
+ * Assinatura do cliente, como registro próprio e imutável.
+ *
+ * Já foi um campo da OS, e isso fazia a assinatura sumir: a OS usa "último
+ * horário vence" na linha inteira, então uma mudança de status feita depois em
+ * outro aparelho sobrescrevia a assinatura colhida offline. Como registro à
+ * parte, cada assinatura é só inserida e nunca disputa espaço com o status.
+ * Assinar de novo cria outro registro; vale o mais recente.
+ */
+export interface AssinaturaOS {
+  id: string
+  osId: string
+  png: string
+  criadoEm: string
+  atualizadoEm: string
+}
+
+export type EntidadeSincronizavel = 'cliente' | 'os' | 'evento' | 'assinatura' | 'foto'
 
 export interface OperacaoSync {
   id: string
