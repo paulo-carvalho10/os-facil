@@ -1,4 +1,4 @@
-import { AlertTriangle, ClipboardList, Plus, RefreshCcw, WifiOff } from 'lucide-react'
+import { AlertTriangle, ClipboardList, Info, Plus, RefreshCcw, WifiOff, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link, NavLink, Outlet } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
@@ -12,6 +12,44 @@ const rotulos = {
   sincronizado: 'Tudo sincronizado',
   erro: 'Aguardando nova tentativa',
   local: 'Modo local',
+}
+
+const CHAVE_AVISO_FECHADO = 'os-facil:aviso-demonstracao-fechado'
+
+/**
+ * Aviso da demonstração. Fica no fluxo da página, e não flutuando sobre ela,
+ * para nunca cobrir conteúdo. Fechar é lembrado só neste navegador; se o
+ * armazenamento estiver bloqueado, o aviso apenas volta a aparecer.
+ */
+function AvisoDemonstracao() {
+  const [visivel, setVisivel] = useState(() => {
+    try {
+      return localStorage.getItem(CHAVE_AVISO_FECHADO) !== '1'
+    } catch {
+      return true
+    }
+  })
+
+  if (!visivel) return null
+
+  function fechar() {
+    try {
+      localStorage.setItem(CHAVE_AVISO_FECHADO, '1')
+    } catch {
+      // Sem armazenamento, o aviso só some até recarregar.
+    }
+    setVisivel(false)
+  }
+
+  return (
+    <div className="demo-notice-wrap no-print">
+      <div className="demo-notice" role="note">
+        <Info size={16} aria-hidden="true" />
+        <span>Demonstração com dados fictícios. As alterações ficam só neste navegador.</span>
+        <button type="button" onClick={fechar} aria-label="Fechar aviso da demonstração"><X size={16} /></button>
+      </div>
+    </div>
+  )
 }
 
 export function Shell() {
@@ -30,7 +68,6 @@ export function Shell() {
 
   return (
     <div className="app-shell">
-      {!supabase && <div className="no-print" style={{ position: 'fixed', bottom: 72, right: 16, zIndex: 10, maxWidth: 300, background: '#fff', padding: 12, border: '1px solid #ddd', borderRadius: 12, fontSize: 12 }}>Demonstração com dados fictícios. Alterações ficam apenas neste navegador.</div>}
       <aside className="sidebar no-print">
         <NavLink to="/" className="brand" aria-label="OS Fácil - início">
           <span className="brand-mark"><ClipboardList size={21} /></span>
@@ -55,6 +92,7 @@ export function Shell() {
         <p className="version">OS Fácil v0.1.0</p>
       </aside>
       <main className="main-content">
+        {!supabase && <AvisoDemonstracao />}
         {supabase && (
           <div className="no-print" style={{ padding: '12px 24px', textAlign: 'right' }}>
             <button className="text-button" onClick={() => void supabase!.auth.signOut({ scope: 'local' }).then(() => window.location.reload())}>Sair da conta</button>
