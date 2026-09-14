@@ -72,9 +72,9 @@ O workflow publica a pasta `dist` no GitHub Pages após os testes. Rotas da demo
 
 ## Validação e limites
 
-32 testes automatizados. Cobrem validação, regras da fila, o motor de sincronização contra um servidor em memória (recusa que não trava a fila, queda de conexão, assinatura preservada em conflito) e a migração do banco local. O script `supabase/testar-integracao.sql` cobre RLS, autorização, escrita direta bloqueada, idempotência, privacidade do portal e preservação da assinatura. As cinco migrações e esse script foram executados num PostgreSQL local.
+32 testes automatizados. Cobrem validação, regras da fila, o motor de sincronização contra um servidor em memória (recusa que não trava a fila, queda de conexão, assinatura preservada em conflito) e a migração do banco local. O script `supabase/testar-integracao.sql` cobre RLS, autorização, escrita direta bloqueada, idempotência, privacidade do portal e preservação da assinatura. Ele passou no projeto Supabase real, com as cinco migrações aplicadas.
 
-A demonstração foi verificada num Chromium: instalável, abre e recarrega sem rede, cria OS, salva assinatura e abre o portal offline. O fluxo conectado foi testado antes, num projeto Supabase real, com login, criação de OS, envio de foto e sincronização entre dois navegadores.
+A demonstração foi verificada num Chromium: instalável, abre e recarrega sem rede, cria OS, salva assinatura e abre o portal offline. A versão conectada foi verificada no projeto Supabase real: login, criação de OS, envio de foto e sincronização entre dois navegadores. Depois da migração 004, uma assinatura colhida no navegador foi sincronizada e gravada no banco como registro próprio, com o status da OS preservado.
 
 Este é um MVP de portfólio, não um produto pronto para operação comercial. Pendentes: impressão física, recuperação de senha na interface, backup operacional e download incremental (hoje cada ciclo baixa as tabelas inteiras). Na versão conectada, abrir o painel exige validar a sessão online; depois de aberto, funciona sem rede. Câmera e leitura de códigos dependem do navegador e de permissão do visitante. Detalhes em [ARQUITETURA.md](ARQUITETURA.md).
 
