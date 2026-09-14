@@ -1,6 +1,19 @@
 import { db } from './database'
-import type { Cliente, EventoOS, OrdemServico, StatusOS } from './types'
+import { STATUS_OS, type Cliente, type EventoOS, type OrdemServico, type StatusOS } from './types'
 import { gerarCodigoPublico } from '../domain/public-code'
+
+/** Observação usada nas etapas que o exemplo já passou. A etapa atual usa a observação do próprio exemplo. */
+const NOTA_DA_ETAPA: Record<StatusOS, string> = {
+  aguardando_avaliacao: 'Ordem de serviço aberta e aparelho recebido.',
+  orcamento_enviado: 'Orçamento enviado ao cliente.',
+  aprovado: 'Cliente aprovou o orçamento.',
+  em_conserto: 'Reparo iniciado na bancada.',
+  pronto: 'Reparo concluído e testado.',
+  entregue: 'Aparelho entregue ao cliente.',
+}
+
+const DIA = 86_400_000
+const HORA = 3_600_000
 
 const exemplos: Array<{
   cliente: string
@@ -41,21 +54,28 @@ export async function carregarDadosDemonstracao(forcar = false): Promise<void> {
         return
       }
 
-      const inicio = Date.now() - exemplos.length * 86_400_000
+      const inicio = Date.now() - exemplos.length * DIA
       const clientes: Cliente[] = []
       const ordens: OrdemServico[] = []
       const eventos: EventoOS[] = []
 
       exemplos.forEach((item, indice) => {
-        const instante = new Date(inicio + indice * 86_400_000).toISOString()
+        // Cada exemplo traz o histórico inteiro até a etapa atual, duas horas
+        // entre uma etapa e outra, para a linha do tempo mostrar o fluxo real.
+        const etapas = STATUS_OS.slice(0, STATUS_OS.indexOf(item.status) + 1)
+        const aberturaDoDia = inicio + indice * DIA + 9 * HORA
+        const momento = (etapa: number) => new Date(aberturaDoDia + etapa * 2 * HORA).toISOString()
+        const aberta = momento(0)
+        const atualizada = momento(etapas.length - 1)
+
         const clienteId = crypto.randomUUID()
         const osId = crypto.randomUUID()
         clientes.push({
           id: clienteId,
           nome: item.cliente,
           telefone: item.telefone,
-          criadoEm: instante,
-          atualizadoEm: instante,
+          criadoEm: aberta,
+          atualizadoEm: aberta,
         })
         ordens.push({
           id: osId,
@@ -68,20 +88,23 @@ export async function carregarDadosDemonstracao(forcar = false): Promise<void> {
           acessorios: indice % 2 ? 'Capa protetora' : 'Sem acessórios',
           orcamento: 120 + indice * 45,
           status: item.status,
-          criadaEm: instante,
-          atualizadaEm: instante,
-          entregueEm: item.status === 'entregue' ? instante : undefined,
+          criadaEm: aberta,
+          atualizadaEm: atualizada,
+          entregueEm: item.status === 'entregue' ? atualizada : undefined,
           codigoPublico: gerarCodigoPublico(),
-          sincronizadaEm: instante,
+          sincronizadaEm: atualizada,
         })
-        eventos.push({
-          id: crypto.randomUUID(),
-          osId,
-          status: item.status,
-          observacao: item.observacao,
-          publico: true,
-          criadoEm: instante,
-          atualizadoEm: instante,
+        etapas.forEach((status, etapa) => {
+          const atual = etapa === etapas.length - 1
+          eventos.push({
+            id: crypto.randomUUID(),
+            osId,
+            status,
+            observacao: atual ? item.observacao : NOTA_DA_ETAPA[status],
+            publico: true,
+            criadoEm: momento(etapa),
+            atualizadoEm: momento(etapa),
+          })
         })
       })
 
