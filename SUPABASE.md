@@ -21,7 +21,9 @@ Executar em ordem, uma vez por ambiente: `schema.sql`, depois `migrations/` pela
 - **003** recria a RPC com a correção da variável de recibo. Em ambiente novo, reaplica a mesma função da 002 sem efeito.
 - **004** tira a assinatura da linha da OS: cria `os_assinaturas`, copia as assinaturas existentes e troca a RPC para aceitar a entidade `assinatura`. A coluna `assinatura_png` fica, sem uso, para não apagar dados.
 
-**Aplique a 004 antes de usar a versão conectada deste código.** Sem ela, a RPC recusa as assinaturas novas (aparecem como recusadas na tela Sincronização) e o download falha ao procurar `os_assinaturas`.
+No projeto `lxeasnctuhpnsxqhbnlc`, as quatro migrações estão aplicadas; a 004 foi aplicada em 13/09/2026.
+
+Num ambiente novo, **aplique a 004 antes de usar a versão conectada deste código.** Sem ela, a RPC recusa as assinaturas novas (aparecem como recusadas na tela Sincronização) e o download falha ao procurar `os_assinaturas`. E não use a versão anterior do aplicativo depois de aplicá-la: a RPC nova ignora a assinatura enviada dentro da OS.
 
 ## Login e dispositivos
 
@@ -44,11 +46,19 @@ O cache local não é criptografado. Sair encerra a sessão, mas preserva altera
 
 No projeto remoto, com as migrações até a 003: teste SQL aprovado para operador, RLS, escrita direta bloqueada, idempotência e projeção pública. API anônima de clientes retorna HTTP 401; consulta pública com código inválido retorna HTTP 200/null. Primeiro operador cadastrado e ativo. A migração 003 corrige a ambiguidade da variável de recibo encontrada por esse teste.
 
-A migração 004 e a versão atual do `testar-integracao.sql` foram executadas num PostgreSQL local (PGlite), com esboços dos esquemas `auth` e `storage`, e ainda precisam ser aplicadas e rodadas no projeto remoto. O teste falha sem a 004, o que confirma que ele cobre a mudança.
+A migração 004 foi validada primeiro num PostgreSQL local (PGlite), com esboços dos esquemas `auth` e `storage`. Lá, o `testar-integracao.sql` falha sem a 004, o que confirma que ele cobre a mudança.
+
+No projeto remoto, em 13/09/2026, a 004 foi aplicada pela CLI (`supabase db query --linked`, que executa como `postgres`, o mesmo papel do SQL Editor):
+
+- Antes: RPC da 003 presente, 004 pendente, 2 OS e nenhuma assinatura na coluna antiga.
+- Depois: `os_assinaturas` com RLS ativo e uma política de leitura para operadores, sem leitura anônima nem escrita direta, e a RPC nova no lugar.
+- `testar-integracao.sql` aprovado, sem deixar registros. O número 1003 foi consumido pelo teste, e a próxima OS real recebeu o 1004.
 
 ## Operação e limites
 
 Validado no navegador, antes da 004: login, abertura da OS fictícia #1002, numeração definitiva pelo servidor, envio de foto JPEG, mudança para orçamento enviado e fila zerada. Portal consultado também pela API sem sessão: omite nota interna e dados pessoais. Objeto JPEG confirmado no Storage; tentativas de download sem sessão foram negadas. A OS #1002 e a foto apareceram num segundo navegador com outra sessão. Os registros sintéticos ficam identificados como teste na oficina.
+
+Validado no navegador, depois da 004: assinatura colhida na OS #1004, sincronizada e conferida no banco: gravada em `os_assinaturas` como PNG, com o status da OS preservado.
 
 Não foi configurado SMTP próprio, recuperação de senha no aplicativo, backup externo nem restauração periódica. Não há garantia de backup operacional nesta etapa. Antes de usar dados reais, definir retenção, exportação do banco e dos objetos privados e testar restauração. Consultar as condições do plano gratuito no painel antes de produção.
 
