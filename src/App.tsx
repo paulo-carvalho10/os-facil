@@ -5,6 +5,7 @@ import { Dashboard } from './pages/Dashboard'
 import { NovaOrdem } from './pages/NovaOrdem'
 import { DetalheOrdem } from './pages/DetalheOrdem'
 import { PortalCliente } from './pages/PortalCliente'
+import { Sincronizacao } from './pages/Sincronizacao'
 import { iniciarSincronizacao } from './sync/supabase-engine'
 import { Login } from './auth/Login'
 
@@ -22,6 +23,7 @@ export function App() {
         <Route index element={<Dashboard />} />
         <Route path="/nova" element={<NovaOrdem />} />
         <Route path="/ordens/:id" element={<DetalheOrdem />} />
+        <Route path="/sincronizacao" element={<Sincronizacao />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>

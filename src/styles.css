@@ -169,9 +169,24 @@ select:focus, input:focus, textarea:focus { border-color: #a9bf37; box-shadow: 0
 @keyframes pulse { 50% { opacity: .35; } }
 @keyframes shimmer { to { background-position: -300% 0; } }
 
+.sync-alert { margin-top: 10px; padding: 9px 10px; border-radius: 10px; background: #3a2418; color: #ffcf9a; display: flex; gap: 8px; align-items: flex-start; font-size: 12px; font-weight: 700; line-height: 1.35; }
+.sync-alert-mobile { display: none; }
+.sync-problems { padding: 8px 22px; }
+.sync-problems > .muted { margin: 14px 0 4px; }
+.sync-problems ul { margin: 0; padding: 0; list-style: none; }
+.sync-problems li { padding: 18px 0; border-bottom: 1px solid var(--line); display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; gap: 12px; align-items: start; }
+.sync-problems li:last-child { border-bottom: 0; }
+.sync-problems li > svg { color: #b4632a; margin-top: 2px; }
+.sync-problems li p { margin: 5px 0; color: #a8382b; font-size: 13px; overflow-wrap: anywhere; }
+.sync-problems li small { color: var(--muted); }
+
 @media (max-width: 920px) {
   .app-shell { grid-template-columns: 1fr; }
   .sidebar { display: none; }
+  .sync-alert-mobile { display: block; padding: 12px 20px 0; }
+  .sync-alert-mobile .sync-alert { margin: 0; font-size: 13px; }
+  .sync-problems li { grid-template-columns: 22px minmax(0, 1fr); }
+  .sync-problems li .row-actions { grid-column: 2; }
   .page { padding: 34px 20px 100px; }
   .bottom-nav { position: fixed; z-index: 20; left: 12px; right: 12px; bottom: 12px; padding: 7px; border: 1px solid #353a33; border-radius: 16px; background: #171a16ee; backdrop-filter: blur(15px); display: grid; grid-template-columns: repeat(2, 1fr); box-shadow: 0 12px 45px #0004; }
   .bottom-nav a { padding: 7px; color: #9ba095; border-radius: 10px; display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 10px; }

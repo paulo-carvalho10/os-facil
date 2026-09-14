@@ -28,12 +28,12 @@ export async function carregarDadosDemonstracao(forcar = false): Promise<void> {
 
   await db.transaction(
     'rw',
-    [db.clientes, db.ordens, db.eventos, db.fotos, db.filaSync, db.configuracoes],
+    [db.clientes, db.ordens, db.eventos, db.assinaturas, db.fotos, db.filaSync, db.configuracoes],
     async () => {
       if (forcar) {
         await Promise.all([
           db.clientes.clear(), db.ordens.clear(), db.eventos.clear(),
-          db.fotos.clear(), db.filaSync.clear(),
+          db.assinaturas.clear(), db.fotos.clear(), db.filaSync.clear(),
         ])
       }
       if ((await db.ordens.count()) > 0) {
